@@ -1,0 +1,84 @@
+name: Go CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main # Запуск только для изменений в ветке main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      # Проверяем код из репозитория
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Устанавливаем Go
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.20 # Укажите вашу версию Go
+          cache: true
+
+      # Сборка проекта
+      - name: Build project
+        run: go build -o bin/app .
+
+      # Сохраняем артефакты сборки (необязательно)
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: app
+          path: bin/app
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build # Запускается после успешной сборки
+
+    steps:
+      # Проверяем код из репозитория
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Устанавливаем Go
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.20
+          cache: true
+
+      # Запускаем юнит-тесты
+      - name: Run tests
+        run: |
+          go test ./... -v -coverprofile=coverage.out
+          go tool cover -func=coverage.out
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: test # Запускается только если тесты прошли успешно
+
+    steps:
+      # Проверяем код из репозитория
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Настраиваем SSH для деплоя
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      # Деплой на удалённый сервер
+      - name: Deploy to server
+        run: |
+          scp bin/app ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/path/to/deploy
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "systemctl restart your-service"
