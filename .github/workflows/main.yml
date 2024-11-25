@@ -79,6 +79,6 @@ jobs:
       # Деплой на сервер
       - name: Deploy Docker container
         run: |
-          ssh -o HostKeyAlgorithms +sk-ssh-ed25519@openssh.com ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+          ssh -o HostKeyAlgorithms=+sk-ssh-ed25519@openssh.com ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
             "docker pull ${{ secrets.DOCKER_USERNAME }}/my-go-app:${{ github.sha }} && \
             docker run -d -p 8080:8080 ${{ secrets.DOCKER_USERNAME }}/my-go-app:${{ github.sha }}"
